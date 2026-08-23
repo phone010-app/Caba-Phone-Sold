@@ -1,44 +1,75 @@
 name: Build Android APK
 
-# يخدم أوتوماتيك كل ما ترفع (push) للـ main، أو تقدر تشغلو يدوي من تبويب Actions
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
   workflow_dispatch:
 
 jobs:
-  build:
+  build-apk:
+    name: Build CabaPhoneSold APK
     runs-on: ubuntu-latest
+
     steps:
-      - name: تحميل الكود
+
+      # 1) جلب ملفات المشروع
+      - name: جلب المشروع
         uses: actions/checkout@v4
 
+      # 2) تثبيت Node.js
+      # لا نضع cache: npm لأن المشروع لا يحتوي على package-lock.json
       - name: تثبيت Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: npm
+          node-version: 20
 
-      - name: تثبيت Java (خاص لبناء Android)
+      # 3) تثبيت Java المطلوبة لـ Android / Gradle
+      - name: تثبيت Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: تثبيت المكتبات (npm install)
-        run: npm install
+      # 4) عرض الإصدارات للتأكد أن البيئة صحيحة
+      - name: فحص البيئة
+        run: |
+          node --version
+          npm --version
+          java -version
 
-      - name: تجهيز المشروع الأندرويد (expo prebuild)
-        run: npx expo prebuild --platform android --non-interactive
+      # 5) تثبيت مكتبات المشروع
+      - name: تثبيت الحزم
+        run: |
+          npm install
 
-      - name: بناء الـ APK (نسخة debug - موقعة أوتوماتيك، تتنصب مباشرة بلا مشاكل)
+      # 6) تجهيز مشروع Android باستعمال Expo
+      - name: تجهيز المشروع الأندرويد (Expo Prebuild)
+        run: |
+          npx expo prebuild --platform android --non-interactive
+
+      # 7) إعطاء صلاحية التنفيذ لـ Gradle
+      - name: تجهيز Gradle
         working-directory: android
         run: |
           chmod +x gradlew
+
+      # 8) بناء APK Debug
+      - name: بناء الـ APK
+        working-directory: android
+        run: |
           ./gradlew assembleDebug
 
-      - name: رفع الـ APK كـ Artifact
+      # 9) التأكد أن APK خرج فعلاً
+      - name: التحقق من APK
+        run: |
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+
+      # 10) رفع APK كملف يمكن تحميله من GitHub Actions
+      - name: رفع الـ APK
         uses: actions/upload-artifact@v4
         with:
           name: CabaPhoneSold-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
