@@ -1,0 +1,44 @@
+name: Build Android APK
+
+# يخدم أوتوماتيك كل ما ترفع (push) للـ main، أو تقدر تشغلو يدوي من تبويب Actions
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: تحميل الكود
+        uses: actions/checkout@v4
+
+      - name: تثبيت Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: تثبيت Java (خاص لبناء Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: تثبيت المكتبات (npm install)
+        run: npm install
+
+      - name: تجهيز المشروع الأندرويد (expo prebuild)
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: بناء الـ APK (نسخة debug - موقعة أوتوماتيك، تتنصب مباشرة بلا مشاكل)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: رفع الـ APK كـ Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CabaPhoneSold-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
