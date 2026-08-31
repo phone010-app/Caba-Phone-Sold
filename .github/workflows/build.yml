@@ -37,7 +37,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
       - name: رفع الـ APK كـ Artifact
         uses: actions/upload-artifact@v4
